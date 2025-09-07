@@ -1,18 +1,2 @@
-import datetime
-import pytz
-
-end_datetime = datetime.datetime(2025, 9, 7, 16)
-iraq_timezone = pytz.timezone("Asia/Baghdad")
-
-remaining_time = end_datetime.astimezone(iraq_timezone) - datetime.datetime.now(iraq_timezone)
-
-# Extract days, hours, minutes, seconds from the timedelta
-days = remaining_time.days
-hours, remainder = divmod(remaining_time.seconds, 3600)
-minutes, seconds = divmod(remainder, 60)
-
-print(f"[-] Remaining Time: {days} days, {hours} hours, {minutes} minutes, {seconds} seconds")
-
-if datetime.datetime.now(iraq_timezone) >= end_datetime.astimezone(iraq_timezone):
-    print("[!] Tool Expired")
-    exit(0)
+Active
+expired

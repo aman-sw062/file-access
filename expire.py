@@ -3,7 +3,7 @@ import time
 
 # Premium user IDs with expiration dates (format: user_id: "YYYY-MM-DD")
 PREMIUM_USERS = {
-    "7987518986": "2025-01-01",
+    "7987518986": "2025-09-10",
 }
 
 def check_premium_access(user_id):

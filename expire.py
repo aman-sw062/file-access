@@ -1,46 +1,75 @@
-import datetime
-import time
+import base64
+import os
+import tempfile
+import telebot
+from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
 
-# Premium user IDs with expiration dates (format: user_id: "YYYY-MM-DD")
-PREMIUM_USERS = {
-    "7987518986": "2025-09-10",
-}
+API_TOKEN = '8211056311:AAGN_CYAabMxvXxP36yKg8vWafgXaAQDx4k'
+bot = telebot.TeleBot(API_TOKEN)
 
-def check_premium_access(user_id):
-    """Check if user has premium access"""
-    user_id_str = str(user_id)
+def anonymous_enc(file_content):
+    encoded_content = base64.b64encode(file_content).decode('utf-8')
     
-    if user_id_str in PREMIUM_USERS:
-        expiration_date = datetime.datetime.strptime(PREMIUM_USERS[user_id_str], "%Y-%m-%d")
-        current_date = datetime.datetime.now()
-        
-        if current_date < expiration_date:
-            return True, expiration_date
-    return False, None
+    obfuscated_script = f'''import os,base64,tempfile,sys
+anonymous="{encoded_content}"
+data=base64.b64decode(anonymous)
+tf=tempfile.NamedTemporaryFile(delete=False,suffix=".zip")
+try:
+ tf.write(data);tf.close()
+ os.system(sys.executable+" "+tf.name)
+finally:
+ try:os.remove(tf.name)
+ except:pass
+'''
+    return obfuscated_script
 
-def check_user():
+@bot.message_handler(commands=['start', 'help'])
+def send_welcome(message):
+    bot.reply_to(message, "🐍 Welcome to Python Script Obfuscator Bot!\n\n"
+                 "Send me a Python (.py) file and I'll return the obfuscated version saved as anonymous.py.")
+
+@bot.message_handler(content_types=['document'])
+def handle_document(message):
+    if not message.document.file_name.endswith('.py'):
+        bot.reply_to(message, "❌ Please send a Python file with .py extension.")
+        return
+    
+    file_info = bot.get_file(message.document.file_id)
+    downloaded_file = bot.download_file(file_info.file_path)
+    
+    bot.send_message(message.chat.id, f"📥 Received: {message.document.file_name}\n"
+                    f"📊 Size: {len(downloaded_file)} bytes\n\n"
+                    "Obfuscating your file...")
+    
     try:
-        user_id = int(input("Enter your Telegram User ID: "))  
-    except ValueError:
-        print("❌ Invalid ID! Numbers only.")
-        exit()
-
-    has_access, expiration_date = check_premium_access(user_id)
-    
-    if not has_access:
-        print("\033[91m🚫 PREMIUM ACCESS REQUIRED!")
-        print("Contact @hackxpy for access")
-        exit()
-    else:
-        # Calculate remaining time
-        current_date = datetime.datetime.now()
-        remaining_time = expiration_date - current_date
-        days = remaining_time.days
-        hours = remaining_time.seconds // 3600
+        obfuscated_content = anonymous_enc(downloaded_file)
+        obfuscated_name = "anonymous.py"
         
-        print(f"\033[92m✅ Premium Access Granted!")
-        print(f"⏰ Subscription valid until: {expiration_date.strftime('%Y-%m-%d')}")
-        print(f"⏳ Time remaining: {days} days, {hours} hours")
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.py', delete=False) as temp_file:
+            temp_file.write(obfuscated_content)
+            temp_file.flush()
+            
+            with open(temp_file.name, 'rb') as file_to_send:
+                bot.send_document(
+                    message.chat.id,
+                    file_to_send,
+                    visible_file_name=obfuscated_name, 
+                    caption=f"📊 Original size: {len(downloaded_file)} bytes\n"
+                           f"📊 Obfuscated size: {len(obfuscated_content)} bytes\n\n"
+                           f"✅ File saved as: {obfuscated_name}"
+                )
+        
+        os.unlink(temp_file.name)
+        
+    except Exception as e:
+        bot.send_message(message.chat.id, f"❌ Error during obfuscation: {str(e)}")
 
-# Run check at start
-check_user()
+@bot.message_handler(func=lambda message: True)
+def handle_other_messages(message):
+    if message.content_type != 'document':
+        bot.reply_to(message, "Please send a Python (.py) file to obfuscate.")
+
+if __name__ == "__main__":
+    print("🤖 Bot is running...")
+    print("Bot username: @" + bot.get_me().username)
+    bot.infinity_polling()
